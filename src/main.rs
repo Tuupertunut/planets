@@ -6,6 +6,7 @@ use kiss3d::light::Light;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
 use nalgebra::{Point3, Translation3, Vector3};
+use std::time::SystemTime;
 
 fn main() {
     let mut window = Window::new("Planets");
@@ -46,38 +47,42 @@ fn main() {
     ];
     let mut new_states = [(Vector3::<f64>::zeros(), Vector3::<f64>::zeros()); 4];
 
+    let starttime = SystemTime::now();
+
     /* runs at 60Hz */
     while window.render_with_camera(&mut camera) {
         let n = 40000;
         for _ in 0..n {
-        /* Calculate new states. */
-        for (i, (_, pos, vel)) in planets.iter().enumerate() {
-            /* Calculate total acceleration caused by other planets. */
+            /* Calculate new states. */
+            for (i, (_, pos, vel)) in planets.iter().enumerate() {
+                /* Calculate total acceleration caused by other planets. */
                 let mut acc = Vector3::<f64>::zeros();
-            for (_, target_pos, _) in &planets {
-                if pos != target_pos {
+                for (_, target_pos, _) in &planets {
+                    if pos != target_pos {
                         let displacement: Vector3<f64> = *target_pos - *pos;
-                    acc += 0.02 * displacement / displacement.norm().powi(3);
+                        acc += 0.02 * displacement / displacement.norm().powi(3);
+                    }
                 }
-            }
 
                 let new_vel = *vel + acc / (n as f64);
                 let new_pos = *pos + new_vel / (n as f64);
-            new_states[i] = (new_pos, new_vel);
-        }
+                new_states[i] = (new_pos, new_vel);
+            }
 
-        /* Apply new states to planets. */
+            /* Apply new states to planets. */
             for (i, (ball, pos, vel)) in planets.iter_mut().enumerate() {
-            let (new_pos, new_vel) = new_states[i];
-            *pos = new_pos;
-            *vel = new_vel;
+                let (new_pos, new_vel) = new_states[i];
+                *pos = new_pos;
+                *vel = new_vel;
                 ball.set_local_translation(Translation3::new(
                     pos[0] as f32,
                     pos[1] as f32,
                     pos[2] as f32,
                 ));
+            }
         }
-    }
+
+        println!("{:?}", starttime.elapsed().unwrap());
     }
 }
 
