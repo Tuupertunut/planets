@@ -1,7 +1,7 @@
 extern crate kiss3d;
 extern crate nalgebra;
 
-use kiss3d::camera::ArcBall;
+use kiss3d::camera::FirstPerson;
 use kiss3d::light::Light;
 use kiss3d::window::Window;
 use nalgebra::{Point3, Translation3, Vector3};
@@ -11,7 +11,7 @@ fn main() {
     window.set_light(Light::StickToCamera);
     window.set_background_color(1.0, 1.0, 1.0);
 
-    let mut camera = ArcBall::new(Point3::new(0.0, 0.0, 15.0), Point3::new(0.0, 0.0, 0.0));
+    let mut camera = FirstPerson::new(Point3::new(0.0, 0.0, 15.0), Point3::new(0.0, 0.0, 0.0));
 
     let mut planet1 = window.add_sphere(1.0);
     planet1.set_color(1.0, 0.0, 0.0);
