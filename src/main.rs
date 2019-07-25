@@ -32,10 +32,17 @@ fn main() {
     let pos3 = Vector3::new(0.0, 0.0, 5.0);
     let vel3 = Vector3::new(0.025, 0.0, 0.0);
 
+    let mut ball4 = window.add_sphere(1.0);
+    ball4.set_color(0.0, 0.0, 1.0);
+
+    let pos4 = Vector3::new(0.0, 6.0, 1.0);
+    let vel4 = Vector3::new(0.04, 0.0, 0.0);
+
     let mut planets = [
         create_planet(ball1, pos1, vel1),
         create_planet(ball2, pos2, vel2),
         create_planet(ball3, pos3, vel3),
+        create_planet(ball4, pos4, vel4),
     ];
     let mut new_states = [(Vector3::<f64>::zeros(), Vector3::<f64>::zeros()); 4];
 
