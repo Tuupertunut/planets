@@ -48,6 +48,8 @@ fn main() {
 
     /* runs at 60Hz */
     while window.render_with_camera(&mut camera) {
+        let n = 40000;
+        for _ in 0..n {
         /* Calculate new states. */
         for (i, (_, pos, vel)) in planets.iter().enumerate() {
             /* Calculate total acceleration caused by other planets. */
@@ -59,8 +61,8 @@ fn main() {
                 }
             }
 
-            let new_vel = *vel + acc;
-            let new_pos = *pos + new_vel;
+                let new_vel = *vel + acc / (n as f64);
+                let new_pos = *pos + new_vel / (n as f64);
             new_states[i] = (new_pos, new_vel);
         }
 
@@ -75,6 +77,7 @@ fn main() {
                     pos[2] as f32,
                 ));
         }
+    }
     }
 }
 
