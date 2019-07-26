@@ -64,6 +64,9 @@ fn main() {
                     }
                 }
 
+                /* Leapfrog integration. The new_vel is actually the velocity half a timestep after
+                 * calculating the acceleration, while new_pos in the position one full timestep
+                 * after. */
                 let new_vel = *vel + acc / (n as f64);
                 let new_pos = *pos + new_vel / (n as f64);
                 new_states[i] = (new_pos, new_vel);
