@@ -1,19 +1,22 @@
 extern crate kiss3d;
 extern crate nalgebra;
+extern crate rand;
 
 use kiss3d::camera::FirstPerson;
 use kiss3d::light::Light;
 use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
 use nalgebra::{Point3, Translation3, Vector3};
+use rand::rngs::StdRng;
+use rand::{Rng, RngCore, SeedableRng};
 use std::time::SystemTime;
 
 fn main() {
-    let mut window = Window::new("Planets");
+    let mut window = Window::new_with_size("Planets", 1000, 750);
     window.set_light(Light::StickToCamera);
     window.set_background_color(1.0, 1.0, 1.0);
 
-    let mut camera = FirstPerson::new(Point3::new(0.0, 0.0, 15.0), Point3::new(0.0, 0.0, 0.0));
+    let mut camera = FirstPerson::new(Point3::new(0.0, 0.0, 50.0), Point3::new(0.0, 0.0, 0.0));
 
     let mut ball1 = window.add_sphere(1.0);
     ball1.set_color(1.0, 0.0, 0.0);
@@ -39,19 +42,47 @@ fn main() {
     let pos4 = Vector3::new(0.0, 6.0, 1.0);
     let vel4 = Vector3::new(0.04, 0.0, 0.0);
 
+    let mut rng = StdRng::seed_from_u64(1);
+
     let mut planets = [
         create_planet(ball1, pos1, vel1),
         create_planet(ball2, pos2, vel2),
         create_planet(ball3, pos3, vel3),
         create_planet(ball4, pos4, vel4),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
+        create_random_planet(&mut window, &mut rng),
     ];
-    let mut new_states = [(Vector3::<f64>::zeros(), Vector3::<f64>::zeros()); 4];
+    let mut new_states = [(Vector3::<f64>::zeros(), Vector3::<f64>::zeros()); 30];
 
     let starttime = SystemTime::now();
 
     /* runs at 60Hz */
     while window.render_with_camera(&mut camera) {
-        let n = 40000;
+        let n = 800;
         for _ in 0..n {
             /* Calculate new states. */
             for (i, (_, pos, vel)) in planets.iter().enumerate() {
@@ -100,4 +131,29 @@ fn create_planet(
         pos[2] as f32,
     ));
     return (ball, pos, vel);
+}
+
+fn create_random_planet(
+    window: &mut Window,
+    rng: &mut RngCore,
+) -> (SceneNode, Vector3<f64>, Vector3<f64>) {
+    let mut ball = window.add_sphere(1.0);
+    ball.set_color(
+        rng.gen_range(0.0, 1.0),
+        rng.gen_range(0.0, 1.0),
+        rng.gen_range(0.0, 1.0),
+    );
+
+    let pos = Vector3::new(
+        rng.gen_range(-25.0, 25.0),
+        rng.gen_range(-25.0, 25.0),
+        rng.gen_range(-25.0, 25.0),
+    );
+    let vel = Vector3::new(
+        rng.gen_range(-0.04, 0.04),
+        rng.gen_range(-0.04, 0.04),
+        rng.gen_range(-0.04, 0.04),
+    );
+
+    return create_planet(ball, pos, vel);
 }
