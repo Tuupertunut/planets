@@ -11,6 +11,13 @@ use rand::rngs::StdRng;
 use rand::{Rng, RngCore, SeedableRng};
 use std::time::SystemTime;
 
+struct Planet {
+    ball: SceneNode,
+    mass: f64,
+    pos: Vector3<f64>,
+    vel: Vector3<f64>,
+}
+
 fn main() {
     let mut window = Window::new_with_size("Planets", 1000, 750);
     window.set_light(Light::StickToCamera);
@@ -21,34 +28,38 @@ fn main() {
     let mut ball1 = window.add_sphere(1.0);
     ball1.set_color(1.0, 0.0, 0.0);
 
+    let mass1 = 0.02;
     let pos1 = Vector3::new(4.0, 0.0, 0.0);
     let vel1 = Vector3::new(0.0, 0.025, 0.0);
 
     let mut ball2 = window.add_sphere(1.0);
     ball2.set_color(1.0, 1.0, 0.0);
 
+    let mass2 = 0.02;
     let pos2 = Vector3::new(-4.0, 0.0, 0.0);
     let vel2 = Vector3::new(0.0, -0.025, 0.0);
 
     let mut ball3 = window.add_sphere(1.0);
     ball3.set_color(1.0, 0.0, 1.0);
 
+    let mass3 = 0.02;
     let pos3 = Vector3::new(0.0, 0.0, 5.0);
     let vel3 = Vector3::new(0.025, 0.0, 0.0);
 
     let mut ball4 = window.add_sphere(1.0);
     ball4.set_color(0.0, 0.0, 1.0);
 
+    let mass4 = 0.02;
     let pos4 = Vector3::new(0.0, 6.0, 1.0);
     let vel4 = Vector3::new(0.04, 0.0, 0.0);
 
     let mut rng = StdRng::seed_from_u64(1);
 
     let mut planets = [
-        create_planet(ball1, pos1, vel1),
-        create_planet(ball2, pos2, vel2),
-        create_planet(ball3, pos3, vel3),
-        create_planet(ball4, pos4, vel4),
+        create_planet(ball1, mass1, pos1, vel1),
+        create_planet(ball2, mass2, pos2, vel2),
+        create_planet(ball3, mass3, pos3, vel3),
+        create_planet(ball4, mass4, pos4, vel4),
         create_random_planet(&mut window, &mut rng),
         create_random_planet(&mut window, &mut rng),
         create_random_planet(&mut window, &mut rng),
@@ -85,13 +96,18 @@ fn main() {
         let n = 800;
         for _ in 0..n {
             /* Calculate new states. */
-            for (i, (_, pos, vel)) in planets.iter().enumerate() {
+            for (i, Planet { pos, vel, .. }) in planets.iter().enumerate() {
                 /* Calculate total acceleration caused by other planets. */
                 let mut acc = Vector3::<f64>::zeros();
-                for (_, target_pos, _) in &planets {
+                for Planet {
+                    mass: target_mass,
+                    pos: target_pos,
+                    ..
+                } in &planets
+                {
                     if pos != target_pos {
                         let displacement: Vector3<f64> = *target_pos - *pos;
-                        acc += 0.02 * displacement / displacement.norm().powi(3);
+                        acc += *target_mass * displacement / displacement.norm().powi(3);
                     }
                 }
 
@@ -104,7 +120,7 @@ fn main() {
             }
 
             /* Apply new states to planets. */
-            for (i, (ball, pos, vel)) in planets.iter_mut().enumerate() {
+            for (i, Planet { ball, pos, vel, .. }) in planets.iter_mut().enumerate() {
                 let (new_pos, new_vel) = new_states[i];
                 *pos = new_pos;
                 *vel = new_vel;
@@ -120,23 +136,21 @@ fn main() {
     }
 }
 
-fn create_planet(
-    mut ball: SceneNode,
-    pos: Vector3<f64>,
-    vel: Vector3<f64>,
-) -> (SceneNode, Vector3<f64>, Vector3<f64>) {
+fn create_planet(mut ball: SceneNode, mass: f64, pos: Vector3<f64>, vel: Vector3<f64>) -> Planet {
     ball.set_local_translation(Translation3::new(
         pos[0] as f32,
         pos[1] as f32,
         pos[2] as f32,
     ));
-    return (ball, pos, vel);
+    return Planet {
+        ball,
+        mass,
+        pos,
+        vel,
+    };
 }
 
-fn create_random_planet(
-    window: &mut Window,
-    rng: &mut RngCore,
-) -> (SceneNode, Vector3<f64>, Vector3<f64>) {
+fn create_random_planet(window: &mut Window, rng: &mut RngCore) -> Planet {
     let mut ball = window.add_sphere(1.0);
     ball.set_color(
         rng.gen_range(0.0, 1.0),
@@ -144,6 +158,7 @@ fn create_random_planet(
         rng.gen_range(0.0, 1.0),
     );
 
+    let mass = rng.gen_range(0.01, 0.03);
     let pos = Vector3::new(
         rng.gen_range(-25.0, 25.0),
         rng.gen_range(-25.0, 25.0),
@@ -155,5 +170,5 @@ fn create_random_planet(
         rng.gen_range(-0.04, 0.04),
     );
 
-    return create_planet(ball, pos, vel);
+    return create_planet(ball, mass, pos, vel);
 }
