@@ -25,30 +25,22 @@ fn main() {
 
     let mut camera = FirstPerson::new(Point3::new(0.0, 0.0, 50.0), Point3::new(0.0, 0.0, 0.0));
 
-    let mut ball1 = window.add_sphere(1.0);
-    ball1.set_color(1.0, 0.0, 0.0);
-
+    let color1 = (1.0, 0.0, 0.0);
     let mass1 = 0.02;
     let pos1 = Vector3::new(4.0, 0.0, 0.0);
     let vel1 = Vector3::new(0.0, 0.025, 0.0);
 
-    let mut ball2 = window.add_sphere(1.0);
-    ball2.set_color(1.0, 1.0, 0.0);
-
+    let color2 = (1.0, 1.0, 0.0);
     let mass2 = 0.02;
     let pos2 = Vector3::new(-4.0, 0.0, 0.0);
     let vel2 = Vector3::new(0.0, -0.025, 0.0);
 
-    let mut ball3 = window.add_sphere(1.0);
-    ball3.set_color(1.0, 0.0, 1.0);
-
+    let color3 = (1.0, 0.0, 1.0);
     let mass3 = 0.02;
     let pos3 = Vector3::new(0.0, 0.0, 5.0);
     let vel3 = Vector3::new(0.025, 0.0, 0.0);
 
-    let mut ball4 = window.add_sphere(1.0);
-    ball4.set_color(0.0, 0.0, 1.0);
-
+    let color4 = (0.0, 0.0, 1.0);
     let mass4 = 0.02;
     let pos4 = Vector3::new(0.0, 6.0, 1.0);
     let vel4 = Vector3::new(0.04, 0.0, 0.0);
@@ -56,10 +48,10 @@ fn main() {
     let mut rng = StdRng::seed_from_u64(1);
 
     let mut planets = [
-        create_planet(ball1, mass1, pos1, vel1),
-        create_planet(ball2, mass2, pos2, vel2),
-        create_planet(ball3, mass3, pos3, vel3),
-        create_planet(ball4, mass4, pos4, vel4),
+        create_planet(&mut window, color1, mass1, pos1, vel1),
+        create_planet(&mut window, color2, mass2, pos2, vel2),
+        create_planet(&mut window, color3, mass3, pos3, vel3),
+        create_planet(&mut window, color4, mass4, pos4, vel4),
         create_random_planet(&mut window, &mut rng),
         create_random_planet(&mut window, &mut rng),
         create_random_planet(&mut window, &mut rng),
@@ -106,8 +98,8 @@ fn main() {
                 } in &planets
                 {
                     if pos != target_pos {
-                        let displacement: Vector3<f64> = *target_pos - *pos;
-                        acc += *target_mass * displacement / displacement.norm().powi(3);
+                        let displacement = *target_pos - *pos;
+                        acc += *target_mass / displacement.norm().powi(3) * displacement;
                     }
                 }
 
@@ -136,7 +128,16 @@ fn main() {
     }
 }
 
-fn create_planet(mut ball: SceneNode, mass: f64, pos: Vector3<f64>, vel: Vector3<f64>) -> Planet {
+fn create_planet(
+    window: &mut Window,
+    (r, g, b): (f32, f32, f32),
+    mass: f64,
+    pos: Vector3<f64>,
+    vel: Vector3<f64>,
+) -> Planet {
+    let radius = (mass / 0.02).cbrt();
+    let mut ball = window.add_sphere(radius as f32);
+    ball.set_color(r, g, b);
     ball.set_local_translation(Translation3::new(
         pos[0] as f32,
         pos[1] as f32,
@@ -151,13 +152,11 @@ fn create_planet(mut ball: SceneNode, mass: f64, pos: Vector3<f64>, vel: Vector3
 }
 
 fn create_random_planet(window: &mut Window, rng: &mut RngCore) -> Planet {
-    let mut ball = window.add_sphere(1.0);
-    ball.set_color(
+    let color = (
         rng.gen_range(0.0, 1.0),
         rng.gen_range(0.0, 1.0),
         rng.gen_range(0.0, 1.0),
     );
-
     let mass = rng.gen_range(0.01, 0.03);
     let pos = Vector3::new(
         rng.gen_range(-25.0, 25.0),
@@ -170,5 +169,5 @@ fn create_random_planet(window: &mut Window, rng: &mut RngCore) -> Planet {
         rng.gen_range(-0.04, 0.04),
     );
 
-    return create_planet(ball, mass, pos, vel);
+    return create_planet(window, color, mass, pos, vel);
 }
