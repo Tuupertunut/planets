@@ -82,6 +82,7 @@ fn main() {
     let mut new_states = [(Vector3::<f64>::zeros(), Vector3::<f64>::zeros()); 30];
 
     let starttime = SystemTime::now();
+    let initial_energy = measure_total_energy(&planets);
 
     /* runs at 60Hz */
     while window.render_with_camera(&mut camera) {
@@ -98,16 +99,16 @@ fn main() {
                 } in &planets
                 {
                     if pos != target_pos {
-                        let displacement = *target_pos - *pos;
-                        acc += *target_mass / displacement.norm().powi(3) * displacement;
+                        let displacement = target_pos - pos;
+                        acc += target_mass / displacement.norm().powi(3) * displacement;
                     }
                 }
 
                 /* Leapfrog integration. The new_vel is actually the velocity half a timestep after
-                 * calculating the acceleration, while new_pos in the position one full timestep
+                 * calculating the acceleration, while new_pos is the position one full timestep
                  * after. */
-                let new_vel = *vel + acc / (n as f64);
-                let new_pos = *pos + new_vel / (n as f64);
+                let new_vel = vel + acc / (n as f64);
+                let new_pos = pos + new_vel / (n as f64);
                 new_states[i] = (new_pos, new_vel);
             }
 
@@ -125,6 +126,7 @@ fn main() {
         }
 
         println!("{:?}", starttime.elapsed().unwrap());
+        println!("{:?}", measure_total_energy(&planets) - initial_energy);
     }
 }
 
@@ -170,4 +172,24 @@ fn create_random_planet(window: &mut Window, rng: &mut RngCore) -> Planet {
     );
 
     return create_planet(window, color, mass, pos, vel);
+}
+
+fn measure_total_energy(planets: &[Planet]) -> f64 {
+    let mut energy = 0.0;
+    for (i, Planet { mass, pos, vel, .. }) in planets.iter().enumerate() {
+        /* Kinetic energy */
+        energy += mass * vel.norm_squared() / 2.0;
+
+        /* Potential energy */
+        for Planet {
+            mass: target_mass,
+            pos: target_pos,
+            ..
+        } in &planets[(i + 1)..]
+        {
+            let displacement = target_pos - pos;
+            energy -= target_mass * mass / displacement.norm();
+        }
+    }
+    return energy;
 }
