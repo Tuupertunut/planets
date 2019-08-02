@@ -79,7 +79,6 @@ fn main() {
         create_random_planet(&mut window, &mut rng),
         create_random_planet(&mut window, &mut rng),
     ];
-    let mut new_states = [(Vector3::<f64>::zeros(), Vector3::<f64>::zeros()); 30];
 
     let starttime = SystemTime::now();
     let initial_energy = measure_total_energy(&planets);
@@ -89,14 +88,16 @@ fn main() {
         let n = 800;
         for _ in 0..n {
             /* Calculate new states. */
-            for (i, Planet { pos, vel, .. }) in planets.iter().enumerate() {
+            for i in 0..planets.len() {
+                let Planet { pos, vel, .. } = &planets[i];
+
                 /* Calculate total acceleration caused by other planets. */
                 let mut acc = Vector3::<f64>::zeros();
                 for Planet {
                     mass: target_mass,
                     pos: target_pos,
                     ..
-                } in &planets
+                } in planets.iter()
                 {
                     if pos != target_pos {
                         let displacement = target_pos - pos;
@@ -104,19 +105,13 @@ fn main() {
                     }
                 }
 
-                /* Leapfrog integration. The new_vel is actually the velocity half a timestep after
-                 * calculating the acceleration, while new_pos is the position one full timestep
-                 * after. */
                 let new_vel = vel + acc / (n as f64);
-                let new_pos = pos + new_vel / (n as f64);
-                new_states[i] = (new_pos, new_vel);
+                planets[i].vel = new_vel;
             }
 
-            /* Apply new states to planets. */
-            for (i, Planet { ball, pos, vel, .. }) in planets.iter_mut().enumerate() {
-                let (new_pos, new_vel) = new_states[i];
+            for Planet { ball, pos, vel, .. } in planets.iter_mut() {
+                let new_pos = *pos + *vel / (n as f64);
                 *pos = new_pos;
-                *vel = new_vel;
                 ball.set_local_translation(Translation3::new(
                     pos[0] as f32,
                     pos[1] as f32,
