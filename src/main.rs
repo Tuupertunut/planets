@@ -89,21 +89,10 @@ fn main() {
         for _ in 0..n {
             /* Calculate new states. */
             for i in 0..planets.len() {
-                let Planet { pos, vel, .. } = &planets[i];
+                let Planet { pos, vel, .. } = planets[i];
 
                 /* Calculate total acceleration caused by other planets. */
-                let mut acc = Vector3::<f64>::zeros();
-                for Planet {
-                    mass: target_mass,
-                    pos: target_pos,
-                    ..
-                } in planets.iter()
-                {
-                    if pos != target_pos {
-                        let displacement = target_pos - pos;
-                        acc += target_mass / displacement.norm().powi(3) * displacement;
-                    }
-                }
+                let acc = calculate_acceleration(pos, &planets);
 
                 let new_vel = vel + acc / (n as f64);
                 planets[i].vel = new_vel;
@@ -187,4 +176,20 @@ fn measure_total_energy(planets: &[Planet]) -> f64 {
         }
     }
     return energy;
+}
+
+fn calculate_acceleration(pos: Vector3<f64>, planets: &[Planet]) -> Vector3<f64> {
+    let mut acc = Vector3::<f64>::zeros();
+    for Planet {
+        mass: target_mass,
+        pos: target_pos,
+        ..
+    } in planets.iter()
+    {
+        if pos != *target_pos {
+            let displacement = target_pos - pos;
+            acc += target_mass / displacement.norm().powi(3) * displacement;
+        }
+    }
+    return acc;
 }
