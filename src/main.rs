@@ -85,28 +85,66 @@ fn main() {
 
     /* runs at 60Hz */
     while window.render_with_camera(&mut camera) {
-        let n = 800;
+        let n = 500;
         for _ in 0..n {
             /* Calculate new states. */
+            for Planet { pos, vel, .. } in planets.iter_mut() {
+                let new_pos = *pos + *vel / (n as f64) * 0.6756035959798288;
+                *pos = new_pos;
+            }
+
             for i in 0..planets.len() {
                 let Planet { pos, vel, .. } = planets[i];
 
                 /* Calculate total acceleration caused by other planets. */
                 let acc = calculate_acceleration(pos, &planets);
 
-                let new_vel = vel + acc / (n as f64);
+                let new_vel = vel + acc / (n as f64) * 1.3512071919596575;
                 planets[i].vel = new_vel;
             }
 
-            for Planet { ball, pos, vel, .. } in planets.iter_mut() {
-                let new_pos = *pos + *vel / (n as f64);
+            for Planet { pos, vel, .. } in planets.iter_mut() {
+                let new_pos = *pos + *vel / (n as f64) * -0.17560359597982883;
                 *pos = new_pos;
-                ball.set_local_translation(Translation3::new(
-                    pos[0] as f32,
-                    pos[1] as f32,
-                    pos[2] as f32,
-                ));
             }
+
+            for i in 0..planets.len() {
+                let Planet { pos, vel, .. } = planets[i];
+
+                /* Calculate total acceleration caused by other planets. */
+                let acc = calculate_acceleration(pos, &planets);
+
+                let new_vel = vel + acc / (n as f64) * -1.7024143839193153;
+                planets[i].vel = new_vel;
+            }
+
+            for Planet { pos, vel, .. } in planets.iter_mut() {
+                let new_pos = *pos + *vel / (n as f64) * -0.17560359597982883;
+                *pos = new_pos;
+            }
+
+            for i in 0..planets.len() {
+                let Planet { pos, vel, .. } = planets[i];
+
+                /* Calculate total acceleration caused by other planets. */
+                let acc = calculate_acceleration(pos, &planets);
+
+                let new_vel = vel + acc / (n as f64) * 1.3512071919596575;
+                planets[i].vel = new_vel;
+            }
+
+            for Planet { pos, vel, .. } in planets.iter_mut() {
+                let new_pos = *pos + *vel / (n as f64) * 0.6756035959798288;
+                *pos = new_pos;
+            }
+        }
+
+        for Planet { ball, pos, .. } in planets.iter_mut() {
+            ball.set_local_translation(Translation3::new(
+                pos[0] as f32,
+                pos[1] as f32,
+                pos[2] as f32,
+            ));
         }
 
         println!("{:?}", starttime.elapsed().unwrap());
