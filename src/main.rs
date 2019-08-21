@@ -98,6 +98,7 @@ fn main() {
     let error_tolerance = 1.0e-8;
     let max_timestep = 1.0;
 
+    /* Precalculating a0 for the first step. */
     for i in 0..planets.len() {
         let Planet { pos, .. } = planets[i];
 
@@ -107,7 +108,8 @@ fn main() {
     /* runs at 60Hz */
     while window.render_with_camera(&mut camera) {
         for _ in 0..n {
-            /* Calculate new states. */
+            /* Adaptive Runge-Kutta-Nyström 4(5) integrator. Calculating intermediate states. At
+             * this point a0 should already be calculated. */
             for Planet {
                 pos,
                 vel,
@@ -169,6 +171,7 @@ fn main() {
                 planets[i].a3 = calculate_acceleration(pos, &planets);
             }
 
+            /* Setting new position and velocity. */
             for Planet {
                 pos,
                 vel,
@@ -193,10 +196,12 @@ fn main() {
                         * (1.0 / 8.0 * *a0 + 3.0 / 8.0 * *a1 + 3.0 / 8.0 * *a2 + 1.0 / 8.0 * *a3);
             }
 
+            /* Calculating highest error among planets. */
             let mut highest_error = 0.0;
             for i in 0..planets.len() {
                 let Planet { pos, a0, a3, .. } = planets[i];
 
+                /* Calculating new a0 for error measurement as well as for use in the next step. */
                 planets[i].old_a0 = a0;
                 let new_a0 = calculate_acceleration(pos, &planets);
                 planets[i].a0 = new_a0;
@@ -206,6 +211,7 @@ fn main() {
             }
             let tolerance = timestep * error_tolerance;
 
+            /* Estimating an ideal next timestep size based on the error. */
             if highest_error != 0.0 {
                 let ideal_timestep = timestep * (0.5 * tolerance / highest_error).powf(1.0 / 4.0);
                 timestep = f64::min(max_timestep, ideal_timestep);
@@ -213,6 +219,7 @@ fn main() {
                 timestep = max_timestep;
             }
 
+            /* If error was above tolerance, roll back changes. */
             if highest_error > tolerance {
                 for Planet {
                     pos,
