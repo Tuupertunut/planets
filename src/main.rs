@@ -8,7 +8,7 @@ use kiss3d::scene::SceneNode;
 use kiss3d::window::Window;
 use nalgebra::{Point3, Translation3, Vector3};
 use rand::rngs::StdRng;
-use rand::{Rng, RngCore, SeedableRng};
+use rand::{Rng, SeedableRng};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
@@ -332,7 +332,7 @@ fn create_planet(
     );
 }
 
-fn create_random_planet(window: &mut Window, rng: &mut RngCore) -> (Planet, SceneNode) {
+fn create_random_planet(window: &mut Window, rng: &mut StdRng) -> (Planet, SceneNode) {
     let color = (
         rng.gen_range(0.0, 1.0),
         rng.gen_range(0.0, 1.0),
