@@ -282,7 +282,10 @@ fn run_physics_thread(
 
                 /* Blocks if the frame queue is full. This means that the simulation will just stop
                  * until there is space. */
-                sender.send(frame_data).unwrap();
+                let result = sender.send(frame_data);
+                if result.is_err() {
+                    break;
+                }
                 queue_length.fetch_add(1, Ordering::Relaxed);
 
                 next_frame_time += 1.0;
