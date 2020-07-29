@@ -65,36 +65,36 @@ fn main() {
     let mut rng = StdRng::seed_from_u64(1);
 
     let planet_data: Vec<(Planet, SceneNode)> = vec![
-        create_planet(&mut window, color1, mass1, pos1, vel1),
-        create_planet(&mut window, color2, mass2, pos2, vel2),
-        create_planet(&mut window, color3, mass3, pos3, vel3),
-        create_planet(&mut window, color4, mass4, pos4, vel4),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
-        create_random_planet(&mut window, &mut rng),
+        create_visible_planet(&mut window, color1, mass1, pos1, vel1),
+        create_visible_planet(&mut window, color2, mass2, pos2, vel2),
+        create_visible_planet(&mut window, color3, mass3, pos3, vel3),
+        create_visible_planet(&mut window, color4, mass4, pos4, vel4),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
+        create_random_visible_planet(&mut window, &mut rng),
     ];
 
     let (planets, mut balls): (Vec<Planet>, Vec<SceneNode>) = planet_data.into_iter().unzip();
@@ -102,11 +102,13 @@ fn main() {
     let starttime = SystemTime::now();
     let initial_energy = measure_total_energy(&planets);
 
+    let frame_interval = 1.0;
+
     let (sender, receiver) = mpsc::sync_channel(10000);
     let queue_length = Arc::new(AtomicUsize::new(0));
 
     let queue_length_clone = queue_length.clone();
-    thread::spawn(move || run_physics_thread(planets, sender, queue_length_clone));
+    thread::spawn(move || run_physics_thread(planets, sender, queue_length_clone, frame_interval));
 
     /* runs at 60Hz */
     while window.render_with_camera(&mut camera) {
@@ -132,9 +134,10 @@ fn run_physics_thread(
     mut planets: Vec<Planet>,
     sender: mpsc::SyncSender<FrameData>,
     queue_length: Arc<AtomicUsize>,
+    frame_interval: f64,
 ) {
     let mut simulation_time = 0.0;
-    let mut next_frame_time = 1.0;
+    let mut next_frame_time = frame_interval;
     let mut timestep = 1.0;
 
     let error_tolerance = 1.0e-8;
@@ -288,7 +291,7 @@ fn run_physics_thread(
                 }
                 queue_length.fetch_add(1, Ordering::Relaxed);
 
-                next_frame_time += 1.0;
+                next_frame_time += frame_interval;
             }
         }
 
@@ -302,7 +305,7 @@ fn run_physics_thread(
     }
 }
 
-fn create_planet(
+fn create_visible_planet(
     window: &mut Window,
     (r, g, b): (f32, f32, f32),
     mass: f64,
@@ -317,25 +320,26 @@ fn create_planet(
         pos[1] as f32,
         pos[2] as f32,
     ));
-    return (
-        Planet {
-            mass,
-            pos,
-            vel,
-
-            old_pos: Vector3::<f64>::zeros(),
-            old_vel: Vector3::<f64>::zeros(),
-            old_a0: Vector3::<f64>::zeros(),
-            a0: Vector3::<f64>::zeros(),
-            a1: Vector3::<f64>::zeros(),
-            a2: Vector3::<f64>::zeros(),
-            a3: Vector3::<f64>::zeros(),
-        },
-        ball,
-    );
+    return (create_planet(mass, pos, vel), ball);
 }
 
-fn create_random_planet(window: &mut Window, rng: &mut StdRng) -> (Planet, SceneNode) {
+fn create_planet(mass: f64, pos: Vector3<f64>, vel: Vector3<f64>) -> Planet {
+    return Planet {
+        mass,
+        pos,
+        vel,
+
+        old_pos: Vector3::<f64>::zeros(),
+        old_vel: Vector3::<f64>::zeros(),
+        old_a0: Vector3::<f64>::zeros(),
+        a0: Vector3::<f64>::zeros(),
+        a1: Vector3::<f64>::zeros(),
+        a2: Vector3::<f64>::zeros(),
+        a3: Vector3::<f64>::zeros(),
+    };
+}
+
+fn create_random_visible_planet(window: &mut Window, rng: &mut StdRng) -> (Planet, SceneNode) {
     let color = (
         rng.gen_range(0.0, 1.0),
         rng.gen_range(0.0, 1.0),
@@ -353,7 +357,23 @@ fn create_random_planet(window: &mut Window, rng: &mut StdRng) -> (Planet, Scene
         rng.gen_range(-0.04, 0.04),
     );
 
-    return create_planet(window, color, mass, pos, vel);
+    return create_visible_planet(window, color, mass, pos, vel);
+}
+
+fn create_random_planet(rng: &mut StdRng) -> Planet {
+    let mass = rng.gen_range(0.01, 0.03);
+    let pos = Vector3::new(
+        rng.gen_range(-25.0, 25.0),
+        rng.gen_range(-25.0, 25.0),
+        rng.gen_range(-25.0, 25.0),
+    );
+    let vel = Vector3::new(
+        rng.gen_range(-0.04, 0.04),
+        rng.gen_range(-0.04, 0.04),
+        rng.gen_range(-0.04, 0.04),
+    );
+
+    return create_planet(mass, pos, vel);
 }
 
 fn measure_total_energy(planets: &[Planet]) -> f64 {
