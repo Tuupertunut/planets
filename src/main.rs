@@ -9,6 +9,7 @@ use kiss3d::window::Window;
 use nalgebra::{Point3, Translation3, Vector3};
 use rand::rngs::StdRng;
 use rand::{Rng, SeedableRng};
+use std::iter;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{mpsc, Arc};
 use std::thread;
@@ -36,6 +37,46 @@ struct FrameData {
 }
 
 fn main() {
+    test();
+}
+
+fn test() {
+    let total_starttime = SystemTime::now();
+
+    let mut rng = StdRng::seed_from_u64(2);
+
+    for _ in 0..100 {
+        let planets = iter::repeat_with(|| create_random_planet(&mut rng))
+            .take(30)
+            .collect::<Vec<Planet>>();
+
+        let starttime = SystemTime::now();
+        let initial_energy = measure_total_energy(&planets);
+
+        let frame_interval = 1.0;
+
+        let (sender, receiver) = mpsc::sync_channel(1);
+        let queue_length = Arc::new(AtomicUsize::new(0));
+
+        thread::spawn(move || run_physics_thread(planets, sender, queue_length, frame_interval));
+
+        for _ in 0..1999 {
+            receiver.recv().unwrap();
+        }
+        let frame_data = receiver.recv().unwrap();
+
+        println!(
+            "{:?} {:?} {:?}",
+            starttime.elapsed().unwrap(),
+            frame_data.total_energy - initial_energy,
+            frame_data.simulation_time
+        );
+    }
+
+    println!("{:?}", total_starttime.elapsed().unwrap());
+}
+
+fn run() {
     let mut window = Window::new_with_size("Planets", 1000, 750);
     window.set_light(Light::StickToCamera);
     window.set_background_color(1.0, 1.0, 1.0);
