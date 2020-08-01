@@ -284,7 +284,7 @@ fn run_physics_thread(
             let new_a0 = calculate_acceleration(pos, &planets);
             planets[i].a0 = new_a0;
 
-            let error = (timestep.powi(2) * 1.0 / 60.0 * (a3 - new_a0)).norm();
+            let error = timestep.powi(2) * 1.0 / 60.0 * (a3 - new_a0).norm();
             highest_error = f64::max(highest_error, error);
         }
         let tolerance = timestep * error_tolerance;
