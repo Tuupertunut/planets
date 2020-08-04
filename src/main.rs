@@ -23,11 +23,12 @@ struct Planet {
     /* Temporary storage fields */
     old_pos: Vector3<f64>,
     old_vel: Vector3<f64>,
-    old_a0: Vector3<f64>,
-    a0: Vector3<f64>,
+    old_a5: Vector3<f64>,
     a1: Vector3<f64>,
     a2: Vector3<f64>,
     a3: Vector3<f64>,
+    a4: Vector3<f64>,
+    a5: Vector3<f64>,
 }
 
 struct FrameData {
@@ -181,32 +182,36 @@ fn run_physics_thread(
     let mut next_frame_time = frame_interval;
     let mut timestep = 1.0;
 
-    let error_tolerance = 1.0e-8;
+    let error_tolerance = 1.0e-5;
     let max_timestep = 1.0;
 
-    /* Precalculating a0 for the first step. */
+    /* Precalculating a5 for the first step. */
     for i in 0..planets.len() {
         let Planet { pos, .. } = planets[i];
 
-        planets[i].a0 = calculate_acceleration(pos, &planets);
+        planets[i].a5 = calculate_acceleration(pos, &planets);
     }
 
     loop {
-        /* Adaptive Runge-Kutta-Nyström 4(5) integrator. Calculating intermediate states. At this
-         * point a0 should already be calculated. */
+        /* Adaptive Runge-Kutta-Nyström 6(4) integrator (RKN6(4)6FM from
+         * https://doi.org/10.1093/imanum/7.2.235). Calculating intermediate states. */
         for Planet {
             pos,
             vel,
+            a5,
             old_pos,
             old_vel,
-            a0,
+            old_a5,
             ..
         } in planets.iter_mut()
         {
             *old_pos = *pos;
             *old_vel = *vel;
+            *old_a5 = *a5;
 
-            *pos = *old_pos + timestep * 1.0 / 3.0 * *old_vel + timestep.powi(2) * 1.0 / 18.0 * *a0;
+            *pos = *old_pos
+                + timestep * 1.0 / 10.0 * *old_vel
+                + timestep.powi(2) * 1.0 / 200.0 * *old_a5;
         }
 
         for i in 0..planets.len() {
@@ -219,11 +224,14 @@ fn run_physics_thread(
             pos,
             old_pos,
             old_vel,
+            old_a5,
             a1,
             ..
         } in planets.iter_mut()
         {
-            *pos = *old_pos + timestep * 2.0 / 3.0 * *old_vel + timestep.powi(2) * 2.0 / 9.0 * *a1;
+            *pos = *old_pos
+                + timestep * 3.0 / 10.0 * *old_vel
+                + timestep.powi(2) * (-1.0 / 2200.0 * *old_a5 + 1.0 / 22.0 * *a1);
         }
 
         for i in 0..planets.len() {
@@ -236,14 +244,16 @@ fn run_physics_thread(
             pos,
             old_pos,
             old_vel,
-            a0,
+            old_a5,
+            a1,
             a2,
             ..
         } in planets.iter_mut()
         {
             *pos = *old_pos
-                + timestep * *old_vel
-                + timestep.powi(2) * (1.0 / 3.0 * *a0 + 1.0 / 6.0 * *a2);
+                + timestep * 7.0 / 10.0 * *old_vel
+                + timestep.powi(2)
+                    * (637.0 / 6600.0 * *old_a5 + -7.0 / 110.0 * *a1 + 7.0 / 33.0 * *a2);
         }
 
         for i in 0..planets.len() {
@@ -252,13 +262,11 @@ fn run_physics_thread(
             planets[i].a3 = calculate_acceleration(pos, &planets);
         }
 
-        /* Setting new position and velocity. */
         for Planet {
             pos,
-            vel,
             old_pos,
             old_vel,
-            a0,
+            old_a5,
             a1,
             a2,
             a3,
@@ -266,44 +274,112 @@ fn run_physics_thread(
         } in planets.iter_mut()
         {
             *pos = *old_pos
+                + timestep * 17.0 / 25.0 * *old_vel
+                + timestep.powi(2)
+                    * (225437.0 / 1968750.0 * *old_a5
+                        + -30073.0 / 281250.0 * *a1
+                        + 65569.0 / 281250.0 * *a2
+                        + -9367.0 / 984375.0 * *a3);
+        }
+
+        for i in 0..planets.len() {
+            let Planet { pos, .. } = planets[i];
+
+            planets[i].a4 = calculate_acceleration(pos, &planets);
+        }
+
+        for Planet {
+            pos,
+            old_pos,
+            old_vel,
+            old_a5,
+            a1,
+            a2,
+            a3,
+            a4,
+            ..
+        } in planets.iter_mut()
+        {
+            *pos = *old_pos
                 + timestep * *old_vel
                 + timestep.powi(2)
-                    * (13.0 / 120.0 * *a0 + 3.0 / 10.0 * *a1 + 3.0 / 40.0 * *a2 + 1.0 / 60.0 * *a3);
+                    * (151.0 / 2142.0 * *old_a5
+                        + 5.0 / 116.0 * *a1
+                        + 385.0 / 1368.0 * *a2
+                        + 55.0 / 168.0 * *a3
+                        + -6250.0 / 28101.0 * *a4);
+        }
+
+        for i in 0..planets.len() {
+            let Planet { pos, .. } = planets[i];
+
+            planets[i].a5 = calculate_acceleration(pos, &planets);
+        }
+
+        let mut highest_error = 0.0;
+        for Planet {
+            pos,
+            vel,
+            old_pos,
+            old_vel,
+            old_a5,
+            a1,
+            a2,
+            a3,
+            a4,
+            a5,
+            ..
+        } in planets.iter_mut()
+        {
             *vel = *old_vel
                 + timestep
-                    * (1.0 / 8.0 * *a0 + 3.0 / 8.0 * *a1 + 3.0 / 8.0 * *a2 + 1.0 / 8.0 * *a3);
-        }
+                    * (151.0 / 2142.0 * *old_a5
+                        + 25.0 / 522.0 * *a1
+                        + 275.0 / 684.0 * *a2
+                        + 275.0 / 252.0 * *a3
+                        + -78125.0 / 112404.0 * *a4
+                        + 1.0 / 12.0 * *a5);
+            let error_control_pos = *old_pos
+                + timestep * *old_vel
+                + timestep.powi(2)
+                    * (1349.0 / 157500.0 * *old_a5
+                        + 7873.0 / 50000.0 * *a1
+                        + 192199.0 / 900000.0 * *a2
+                        + 521683.0 / 2100000.0 * *a3
+                        + -16.0 / 125.0 * *a4);
+            let error_control_vel = *old_vel
+                + timestep
+                    * (1349.0 / 157500.0 * *old_a5
+                        + 7873.0 / 45000.0 * *a1
+                        + 27457.0 / 90000.0 * *a2
+                        + 521683.0 / 630000.0 * *a3
+                        + -2.0 / 5.0 * *a4
+                        + 1.0 / 12.0 * *a5);
 
-        /* Calculating highest error among planets. */
-        let mut highest_error = 0.0;
-        for i in 0..planets.len() {
-            let Planet { pos, a0, a3, .. } = planets[i];
-
-            /* Calculating new a0 for error measurement as well as for use in the next step. */
-            planets[i].old_a0 = a0;
-            let new_a0 = calculate_acceleration(pos, &planets);
-            planets[i].a0 = new_a0;
-
-            let error = timestep.powi(2) * 1.0 / 60.0 * (a3 - new_a0).norm();
+            let error = f64::max(
+                (*pos - error_control_pos).norm(),
+                (*vel - error_control_vel).norm(),
+            );
             highest_error = f64::max(highest_error, error);
         }
-        let tolerance = timestep * error_tolerance;
 
-        if highest_error > tolerance {
+        let step_error_tolerance = timestep * error_tolerance;
+
+        if highest_error > step_error_tolerance {
             /* If error was above tolerance, roll back changes. */
             for Planet {
                 pos,
                 vel,
+                a5,
                 old_pos,
                 old_vel,
-                old_a0,
-                a0,
+                old_a5,
                 ..
             } in planets.iter_mut()
             {
                 *pos = *old_pos;
                 *vel = *old_vel;
-                *a0 = *old_a0;
+                *a5 = *old_a5;
             }
         } else {
             simulation_time += timestep;
@@ -338,7 +414,8 @@ fn run_physics_thread(
 
         /* Estimating an ideal next timestep size based on the error. */
         if highest_error != 0.0 {
-            let ideal_timestep = timestep * (0.5 * tolerance / highest_error).powf(1.0 / 4.0);
+            let ideal_timestep =
+                timestep * 0.9 * (step_error_tolerance / highest_error).powf(1.0 / 5.0);
             timestep = f64::min(max_timestep, ideal_timestep);
         } else {
             timestep = max_timestep;
@@ -372,11 +449,12 @@ fn create_planet(mass: f64, pos: Vector3<f64>, vel: Vector3<f64>) -> Planet {
 
         old_pos: Vector3::<f64>::zeros(),
         old_vel: Vector3::<f64>::zeros(),
-        old_a0: Vector3::<f64>::zeros(),
-        a0: Vector3::<f64>::zeros(),
+        old_a5: Vector3::<f64>::zeros(),
         a1: Vector3::<f64>::zeros(),
         a2: Vector3::<f64>::zeros(),
         a3: Vector3::<f64>::zeros(),
+        a4: Vector3::<f64>::zeros(),
+        a5: Vector3::<f64>::zeros(),
     };
 }
 
