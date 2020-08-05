@@ -310,56 +310,45 @@ fn run_physics_thread(
                         + -6250.0 / 28101.0 * *a4);
         }
 
-        for i in 0..planets.len() {
-            let Planet { pos, .. } = planets[i];
-
-            planets[i].a5 = calculate_acceleration(pos, &planets);
-        }
-
         let mut highest_error = 0.0;
-        for Planet {
-            pos,
-            vel,
-            old_pos,
-            old_vel,
-            old_a5,
-            a1,
-            a2,
-            a3,
-            a4,
-            a5,
-            ..
-        } in planets.iter_mut()
-        {
-            *vel = *old_vel
-                + timestep
-                    * (151.0 / 2142.0 * *old_a5
-                        + 25.0 / 522.0 * *a1
-                        + 275.0 / 684.0 * *a2
-                        + 275.0 / 252.0 * *a3
-                        + -78125.0 / 112404.0 * *a4
-                        + 1.0 / 12.0 * *a5);
-            let error_control_pos = *old_pos
-                + timestep * *old_vel
-                + timestep.powi(2)
-                    * (1349.0 / 157500.0 * *old_a5
-                        + 7873.0 / 50000.0 * *a1
-                        + 192199.0 / 900000.0 * *a2
-                        + 521683.0 / 2100000.0 * *a3
-                        + -16.0 / 125.0 * *a4);
-            let error_control_vel = *old_vel
-                + timestep
-                    * (1349.0 / 157500.0 * *old_a5
-                        + 7873.0 / 45000.0 * *a1
-                        + 27457.0 / 90000.0 * *a2
-                        + 521683.0 / 630000.0 * *a3
-                        + -2.0 / 5.0 * *a4
-                        + 1.0 / 12.0 * *a5);
 
-            let error = f64::max(
-                (*pos - error_control_pos).norm(),
-                (*vel - error_control_vel).norm(),
-            );
+        for i in 0..planets.len() {
+            let Planet {
+                pos,
+                old_vel,
+                old_a5,
+                a1,
+                a2,
+                a3,
+                a4,
+                ..
+            } = planets[i];
+
+            let a5 = calculate_acceleration(pos, &planets);
+            planets[i].a5 = a5;
+
+            planets[i].vel = old_vel
+                + timestep
+                    * (151.0 / 2142.0 * old_a5
+                        + 25.0 / 522.0 * a1
+                        + 275.0 / 684.0 * a2
+                        + 275.0 / 252.0 * a3
+                        + -78125.0 / 112404.0 * a4
+                        + 1.0 / 12.0 * a5);
+            let pos_error = timestep.powi(2)
+                * ((1349.0 / 157500.0 - 151.0 / 2142.0) * old_a5
+                    + (7873.0 / 50000.0 - 5.0 / 116.0) * a1
+                    + (192199.0 / 900000.0 - 385.0 / 1368.0) * a2
+                    + (521683.0 / 2100000.0 - 55.0 / 168.0) * a3
+                    + (-16.0 / 125.0 - -6250.0 / 28101.0) * a4);
+            let vel_error = timestep
+                * ((1349.0 / 157500.0 - 151.0 / 2142.0) * old_a5
+                    + (7873.0 / 45000.0 - 25.0 / 522.0) * a1
+                    + (27457.0 / 90000.0 - 275.0 / 684.0) * a2
+                    + (521683.0 / 630000.0 - 275.0 / 252.0) * a3
+                    + (-2.0 / 5.0 - -78125.0 / 112404.0) * a4);
+
+            let error = f64::max(pos_error.norm(), vel_error.norm());
             highest_error = f64::max(highest_error, error);
         }
 
@@ -415,7 +404,7 @@ fn run_physics_thread(
         /* Estimating an ideal next timestep size based on the error. */
         if highest_error != 0.0 {
             let ideal_timestep =
-                timestep * 0.9 * (step_error_tolerance / highest_error).powf(1.0 / 5.0);
+                timestep * (0.5 * step_error_tolerance / highest_error).powf(1.0 / 5.0);
             timestep = f64::min(max_timestep, ideal_timestep);
         } else {
             timestep = max_timestep;
