@@ -36,7 +36,7 @@ struct FrameData {
 }
 
 fn main() {
-    test();
+    run();
 }
 
 fn test() {
