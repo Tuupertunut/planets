@@ -384,36 +384,36 @@ fn create_planet(mass: f64, pos: Vector3<f64>, vel: Vector3<f64>) -> Planet {
 
 fn create_random_visible_planet(window: &mut Window, rng: &mut StdRng) -> (Planet, SceneNode) {
     let color = (
-        rng.gen_range(0.0, 1.0),
-        rng.gen_range(0.0, 1.0),
-        rng.gen_range(0.0, 1.0),
+        rng.gen_range(0.0..1.0),
+        rng.gen_range(0.0..1.0),
+        rng.gen_range(0.0..1.0),
     );
-    let mass = rng.gen_range(0.01, 0.03);
+    let mass = rng.gen_range(0.01..0.03);
     let pos = Vector3::new(
-        rng.gen_range(-25.0, 25.0),
-        rng.gen_range(-25.0, 25.0),
-        rng.gen_range(-25.0, 25.0),
+        rng.gen_range(-25.0..25.0),
+        rng.gen_range(-25.0..25.0),
+        rng.gen_range(-25.0..25.0),
     );
     let vel = Vector3::new(
-        rng.gen_range(-0.04, 0.04),
-        rng.gen_range(-0.04, 0.04),
-        rng.gen_range(-0.04, 0.04),
+        rng.gen_range(-0.04..0.04),
+        rng.gen_range(-0.04..0.04),
+        rng.gen_range(-0.04..0.04),
     );
 
     return create_visible_planet(window, color, mass, pos, vel);
 }
 
 fn create_random_planet(rng: &mut StdRng) -> Planet {
-    let mass = rng.gen_range(0.01, 0.03);
+    let mass = rng.gen_range(0.01..0.03);
     let pos = Vector3::new(
-        rng.gen_range(-25.0, 25.0),
-        rng.gen_range(-25.0, 25.0),
-        rng.gen_range(-25.0, 25.0),
+        rng.gen_range(-25.0..25.0),
+        rng.gen_range(-25.0..25.0),
+        rng.gen_range(-25.0..25.0),
     );
     let vel = Vector3::new(
-        rng.gen_range(-0.04, 0.04),
-        rng.gen_range(-0.04, 0.04),
-        rng.gen_range(-0.04, 0.04),
+        rng.gen_range(-0.04..0.04),
+        rng.gen_range(-0.04..0.04),
+        rng.gen_range(-0.04..0.04),
     );
 
     return create_planet(mass, pos, vel);
