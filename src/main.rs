@@ -19,14 +19,8 @@ struct Planet {
     mass: f64,
     pos: Vector3<f64>,
     vel: Vector3<f64>,
-
-    /* Temporary storage fields */
-    old_pos: Vector3<f64>,
-    old_vel: Vector3<f64>,
-    old_a3: Vector3<f64>,
-    a1: Vector3<f64>,
-    a2: Vector3<f64>,
-    a3: Vector3<f64>,
+    half_old_vel: Vector3<f64>,
+    acc: Vector3<f64>,
 }
 
 struct FrameData {
@@ -178,173 +172,58 @@ fn run_physics_thread(
 ) {
     let mut simulation_time = 0.0;
     let mut next_frame_time = frame_interval;
-    let mut timestep = 1.0;
-
-    let error_tolerance = 1.0e-4;
-    let max_timestep = 1.0;
-
-    /* Precalculating a3 for the first step. */
-    for i in 0..planets.len() {
-        let Planet { pos, .. } = planets[i];
-
-        planets[i].a3 = calculate_acceleration(pos, &planets);
-    }
+    let timestep = 0.0005;
 
     loop {
-        /* Adaptive Runge-Kutta-Nyström 4(3) integrator (RKN4(3)4FM from
-         * https://doi.org/10.1093/imanum/7.2.235). Calculating intermediate states. */
+        /* Velocity Verlet / leapfrog integrator. Velocity is calculated twice per timestep. */
         for Planet {
             pos,
             vel,
-            a3,
-            old_pos,
-            old_vel,
-            old_a3,
+            half_old_vel,
+            acc,
             ..
         } in planets.iter_mut()
         {
-            *old_pos = *pos;
-            *old_vel = *vel;
-            *old_a3 = *a3;
+            let half_new_vel = *vel + 0.5 * timestep * *acc;
+            let new_pos = *pos + timestep * half_new_vel;
 
-            *pos = *old_pos
-                + timestep * 1.0 / 4.0 * *old_vel
-                + timestep.powi(2) * 1.0 / 32.0 * *old_a3;
+            *half_old_vel = half_new_vel;
+            *pos = new_pos;
         }
 
         for i in 0..planets.len() {
-            let Planet { pos, .. } = planets[i];
+            let new_acc = calculate_acceleration(planets[i].pos, &planets);
+            let new_vel = planets[i].half_old_vel + 0.5 * timestep * new_acc;
 
-            planets[i].a1 = calculate_acceleration(pos, &planets);
+            planets[i].acc = new_acc;
+            planets[i].vel = new_vel;
         }
 
-        for Planet {
-            pos,
-            old_pos,
-            old_vel,
-            old_a3,
-            a1,
-            ..
-        } in planets.iter_mut()
-        {
-            *pos = *old_pos
-                + timestep * 7.0 / 10.0 * *old_vel
-                + timestep.powi(2) * (7.0 / 1000.0 * *old_a3 + 119.0 / 500.0 * *a1);
-        }
+        simulation_time += timestep;
 
-        for i in 0..planets.len() {
-            let Planet { pos, .. } = planets[i];
+        if simulation_time >= next_frame_time {
+            /* Calculating and sending frame data to drawing thread. */
+            let positions: Vec<Vector3<f32>> = planets
+                .iter()
+                .map(|Planet { pos, .. }| Vector3::new(pos[0] as f32, pos[1] as f32, pos[2] as f32))
+                .collect();
 
-            planets[i].a2 = calculate_acceleration(pos, &planets);
-        }
+            let total_energy = measure_total_energy(&planets);
+            let frame_data = FrameData {
+                positions,
+                total_energy,
+                simulation_time,
+            };
 
-        for Planet {
-            pos,
-            old_pos,
-            old_vel,
-            old_a3,
-            a1,
-            a2,
-            ..
-        } in planets.iter_mut()
-        {
-            *pos = *old_pos
-                + timestep * *old_vel
-                + timestep.powi(2) * (1.0 / 14.0 * *old_a3 + 8.0 / 27.0 * *a1 + 25.0 / 189.0 * *a2);
-        }
-
-        let mut highest_error = 0.0;
-
-        for i in 0..planets.len() {
-            let Planet {
-                pos,
-                old_vel,
-                old_a3,
-                a1,
-                a2,
-                ..
-            } = planets[i];
-
-            let a3 = calculate_acceleration(pos, &planets);
-            planets[i].a3 = a3;
-
-            planets[i].vel = old_vel
-                + timestep
-                    * (1.0 / 14.0 * old_a3
-                        + 32.0 / 81.0 * a1
-                        + 250.0 / 567.0 * a2
-                        + 5.0 / 54.0 * a3);
-            let pos_error = timestep.powi(2)
-                * ((-7.0 / 150.0 - 1.0 / 14.0) * old_a3
-                    + (67.0 / 150.0 - 8.0 / 27.0) * a1
-                    + (3.0 / 20.0 - 25.0 / 189.0) * a2
-                    + -1.0 / 20.0 * a3);
-            let vel_error = timestep
-                * ((13.0 / 21.0 - 1.0 / 14.0) * old_a3
-                    + (-20.0 / 27.0 - 32.0 / 81.0) * a1
-                    + (275.0 / 189.0 - 250.0 / 567.0) * a2
-                    + (-1.0 / 3.0 - 5.0 / 54.0) * a3);
-
-            let error = f64::max(pos_error.norm(), vel_error.norm());
-            highest_error = f64::max(highest_error, error);
-        }
-
-        let step_error_tolerance = timestep * error_tolerance;
-
-        if highest_error > step_error_tolerance {
-            /* If error was above tolerance, roll back changes. */
-            for Planet {
-                pos,
-                vel,
-                a3,
-                old_pos,
-                old_vel,
-                old_a3,
-                ..
-            } in planets.iter_mut()
-            {
-                *pos = *old_pos;
-                *vel = *old_vel;
-                *a3 = *old_a3;
+            /* Blocks if the frame queue is full. This means that the simulation will just stop
+             * until there is space. */
+            let result = sender.send(frame_data);
+            if result.is_err() {
+                break;
             }
-        } else {
-            simulation_time += timestep;
+            queue_length.fetch_add(1, Ordering::Relaxed);
 
-            if simulation_time >= next_frame_time {
-                /* Calculating and sending frame data to drawing thread. */
-                let positions: Vec<Vector3<f32>> = planets
-                    .iter()
-                    .map(|Planet { pos, .. }| {
-                        Vector3::new(pos[0] as f32, pos[1] as f32, pos[2] as f32)
-                    })
-                    .collect();
-
-                let total_energy = measure_total_energy(&planets);
-                let frame_data = FrameData {
-                    positions,
-                    total_energy,
-                    simulation_time,
-                };
-
-                /* Blocks if the frame queue is full. This means that the simulation will just stop
-                 * until there is space. */
-                let result = sender.send(frame_data);
-                if result.is_err() {
-                    break;
-                }
-                queue_length.fetch_add(1, Ordering::Relaxed);
-
-                next_frame_time += frame_interval;
-            }
-        }
-
-        /* Estimating an ideal next timestep size based on the error. */
-        if highest_error != 0.0 {
-            let ideal_timestep =
-                timestep * (0.5 * step_error_tolerance / highest_error).powf(1.0 / 4.0);
-            timestep = f64::min(max_timestep, ideal_timestep);
-        } else {
-            timestep = max_timestep;
+            next_frame_time += frame_interval;
         }
     }
 }
@@ -372,13 +251,8 @@ fn create_planet(mass: f64, pos: Vector3<f64>, vel: Vector3<f64>) -> Planet {
         mass,
         pos,
         vel,
-
-        old_pos: Vector3::<f64>::zeros(),
-        old_vel: Vector3::<f64>::zeros(),
-        old_a3: Vector3::<f64>::zeros(),
-        a1: Vector3::<f64>::zeros(),
-        a2: Vector3::<f64>::zeros(),
-        a3: Vector3::<f64>::zeros(),
+        half_old_vel: Vector3::<f64>::zeros(),
+        acc: Vector3::<f64>::zeros(),
     };
 }
 
