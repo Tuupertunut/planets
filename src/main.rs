@@ -19,7 +19,6 @@ struct Planet {
     mass: f64,
     pos: Vector3<f64>,
     vel: Vector3<f64>,
-    half_old_vel: Vector3<f64>,
     acc: Vector3<f64>,
 }
 
@@ -175,28 +174,15 @@ fn run_physics_thread(
     let timestep = 0.0005;
 
     loop {
-        /* Velocity Verlet / leapfrog integrator. Velocity is calculated twice per timestep. */
-        for Planet {
-            pos,
-            vel,
-            half_old_vel,
-            acc,
-            ..
-        } in planets.iter_mut()
-        {
-            let half_new_vel = *vel + 0.5 * timestep * *acc;
-            let new_pos = *pos + timestep * half_new_vel;
-
-            *half_old_vel = half_new_vel;
-            *pos = new_pos;
+        /* Velocity Verlet integrator. */
+        for Planet { pos, vel, acc, .. } in planets.iter_mut() {
+            *pos = *pos + timestep * *vel + 0.5 * timestep.powi(2) * *acc;
         }
 
         for i in 0..planets.len() {
             let new_acc = calculate_acceleration(planets[i].pos, &planets);
-            let new_vel = planets[i].half_old_vel + 0.5 * timestep * new_acc;
-
+            planets[i].vel = planets[i].vel + 0.5 * timestep * (planets[i].acc + new_acc);
             planets[i].acc = new_acc;
-            planets[i].vel = new_vel;
         }
 
         simulation_time += timestep;
@@ -251,7 +237,6 @@ fn create_planet(mass: f64, pos: Vector3<f64>, vel: Vector3<f64>) -> Planet {
         mass,
         pos,
         vel,
-        half_old_vel: Vector3::<f64>::zeros(),
         acc: Vector3::<f64>::zeros(),
     };
 }
