@@ -176,7 +176,7 @@ fn run_physics_thread(
     loop {
         /* Velocity Verlet integrator. */
         for Planet { pos, vel, acc, .. } in planets.iter_mut() {
-            *pos = *pos + timestep * *vel + 0.5 * timestep.powi(2) * *acc;
+            *pos = *pos + timestep * (*vel + 0.5 * timestep * *acc);
         }
 
         for i in 0..planets.len() {
