@@ -136,6 +136,11 @@ fn run_physics_thread(
     let mut next_frame_time = frame_interval;
     let timestep = 0.0005;
 
+    /* Precalculating acceleration for the first timestep. */
+    for i in 0..planets.len() {
+        planets[i].acc = calculate_acceleration(planets[i].pos, &planets);
+    }
+
     loop {
         /* Velocity Verlet integrator. */
         for Planet { pos, vel, acc, .. } in planets.iter_mut() {
