@@ -1,7 +1,3 @@
-extern crate kiss3d;
-extern crate nalgebra;
-extern crate rand;
-
 use kiss3d::camera::FirstPerson;
 use kiss3d::light::Light;
 use kiss3d::scene::SceneNode;
