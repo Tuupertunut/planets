@@ -239,13 +239,14 @@ fn measure_total_energy(planets: &[Planet]) -> f64 {
             ..
         } in &planets[(i + 1)..]
         {
-            let displacement = target_pos - pos;
-            energy -= target_mass * mass / displacement.norm();
+            let displacement = pos - target_pos;
+            energy += -target_mass * mass / displacement.norm();
         }
     }
     return energy;
 }
 
+/* Newtonian gravitational acceleration */
 fn calculate_acceleration(pos: Vector3<f64>, planets: &[Planet]) -> Vector3<f64> {
     let mut acc = Vector3::<f64>::zeros();
     for Planet {
@@ -255,8 +256,8 @@ fn calculate_acceleration(pos: Vector3<f64>, planets: &[Planet]) -> Vector3<f64>
     } in planets.iter()
     {
         if pos != *target_pos {
-            let displacement = target_pos - pos;
-            acc += target_mass / displacement.norm().powi(3) * displacement;
+            let displacement = pos - target_pos;
+            acc += -target_mass / displacement.norm().powi(3) * displacement;
         }
     }
     return acc;
